@@ -49,7 +49,7 @@ def get_camera(img, f=None):
                    [0, 0, 1]])
     return K
 
-def rotate(img, angle, angle_in=0, Z=None, center=None):
+def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None):
     h, w = img.shape[:2]
     if Z is None:
         Z = 500.0
@@ -59,9 +59,11 @@ def rotate(img, angle, angle_in=0, Z=None, center=None):
     space_corners = add_z(img_corners - center, 0)
     R_in = rot_z(angle_in)
     R = rot_x(angle)
+    R_post = rot_z(angle_post)
     new_corners = np.matmul(R,
                             np.matmul(R_in,
                                       space_corners))
+    new_corners = np.matmul(R_post, new_corners)
 
     K = get_camera(img, Z)
     P = np.hstack((K, np.transpose(np.matrix([0, 0, Z]))))
@@ -75,8 +77,9 @@ def rotate(img, angle, angle_in=0, Z=None, center=None):
 img = cv2.imread("images/tux.png")
 
 cv2.imshow("tux", img)
-for i in np.linspace(0, 91, 100):
-    rot = rotate(img, angle=i, angle_in=0)
+for i in np.linspace(0, 360, 300):
+    ax_angle = -60
+    rot = rotate(img, angle=i, angle_in=-ax_angle, angle_post=ax_angle)
     cv2.imshow("rot", rot)
     c = cv2.waitKey(20)
     if c == ord('q'):
