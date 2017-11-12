@@ -57,6 +57,70 @@ def alpha_bbox(img):
     cnt = contours[0]
     return cv2.boundingRect(cnt)
 
+def try_get(xs, index, default):
+    try:
+        return xs[index]
+    except IndexError:
+        return default
+
+def fit_in_size(img, sz, random_pad=True):
+    '''
+    1. resize so that the img tightly fits into sz, while keeping aspect ratio
+    2. pad to the exact sz:
+        if random_pad:
+            randomly from both sides
+        else:
+            first img, then pad
+    '''
+    channels = try_get(img.shape, 2, 1)
+    dtype = img.dtype
+    ## Fit while keeping aspect ratio
+    img_sz = np.float32(img.shape[:2])
+    ratios = sz / img_sz
+
+    h_scaled = np.round(img_sz * ratios[0])
+    w_scaled = np.round(img_sz * ratios[1])
+    if np.all(h_scaled <= sz):
+        new_sz = h_scaled
+    elif np.all(w_scaled <= sz):
+        new_sz = w_scaled
+    else:
+        raise RuntimeError("cannot fit the image inside sz")
+
+    new_sz = (int(new_sz[0]), int(new_sz[1]))
+    resized = cv2.resize(img, (new_sz[1], new_sz[0]), interpolation=cv2.INTER_AREA)
+
+    ## pad
+    padding = sz - new_sz
+    if padding[0] > 0:
+        p = padding[0]
+        if random_pad:
+            pre = np.random.randint(0, p+1)
+            post = p - pre
+        else:
+            pre = 0
+            post = p
+
+        pad_pre = np.zeros((pre, sz[1], channels), dtype=dtype)           
+        pad_post = np.zeros((post, sz[1], channels), dtype=dtype)           
+        padded = np.vstack((pad_pre, resized, pad_post))
+    elif padding[1] > 0:
+        p = padding[1]
+        if random_pad:
+            pre = np.random.randint(0, p+1)
+            post = p - pre
+        else:
+            pre = 0
+            post = p
+
+        pad_pre = np.zeros((sz[0], pre, channels), dtype=dtype)
+        pad_post = np.zeros((sz[0], post, channels), dtype=dtype)
+        padded = np.hstack((pad_pre, resized, pad_post))
+    else:
+        padded = resized
+
+    return padded
+
 def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=True):
     h, w = img.shape[:2]
     if Z is None:
@@ -99,14 +163,15 @@ def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=Tru
 
 img = cv2.imread("images/tux.png", cv2.IMREAD_UNCHANGED)
 
-cv2.imshow("tux", img)
-for i in np.linspace(0, 360, 300):
-    ax_angle = -60
-    rot = rotate(img,
-                 angle=i, angle_in=-ax_angle, angle_post=ax_angle,
-                 fit_in=True)
-    cv2.imshow("rot", rot)
-    c = cv2.waitKey(20)
-    if c == ord('q'):
-        break
-cv2.waitKey(0)
+if __name__ == '__main__':
+    for i in np.linspace(0, 360, 300):
+        ax_angle = -60
+        rot = rotate(img,
+                    angle=i, angle_in=-ax_angle, angle_post=ax_angle,
+                    fit_in=True)
+        fitted = fit_in_size(rot, np.array([224, 224]), random_pad=False)
+        cv2.imshow("fitted", fitted)
+        c = cv2.waitKey(20)
+        if c == ord('q'):
+            break
+    cv2.waitKey(0)
