@@ -49,10 +49,18 @@ def get_camera(img, f=None):
                    [0, 0, 1]])
     return K
 
-def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None):
+def alpha_bbox(img):
+    alpha = img[:, :, 3]
+    ret, thresh = cv2.threshold(alpha,127,255,0)
+    contours = cv2.findContours(thresh, 1, 2)
+    
+    cnt = contours[0]
+    return cv2.boundingRect(cnt)
+
+def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=True):
     h, w = img.shape[:2]
     if Z is None:
-        Z = 500.0
+        Z = 800.0
     if center is None:
         center = np.matrix([[h/2.0], [w/2.0]])
     img_corners = get_corners(img)
@@ -67,19 +75,36 @@ def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None):
 
     K = get_camera(img, Z)
     P = np.hstack((K, np.transpose(np.matrix([0, 0, Z]))))
-    rot_projected = p2e(np.matmul(P, e2p(new_corners)))
+    rot_projected = p2e(np.matmul(P, e2p(new_corners))) + center
 
     H, status = cv2.findHomography(np.transpose(img_corners),
-                                   np.transpose(rot_projected + center))
-    dst = cv2.warpPerspective(img, H, (img.shape[1], img.shape[0]))
+                                   np.transpose(rot_projected))
+    if fit_in:
+        # find a homography that fits the whole image inside
+        x_box, y_box, w_box, h_box = cv2.boundingRect(
+            np.float32(np.transpose(rot_projected)))
+        H, status = cv2.findHomography(np.transpose(img_corners),
+                                       np.transpose(rot_projected) - np.float32([x_box, y_box]))
+        dst = cv2.warpPerspective(img, H, (w_box, h_box))
+
+        # further refine by tightly fitting the alpha channel
+        a_x_box, a_y_box, a_w_box, a_h_box = alpha_bbox(dst)
+        H, status = cv2.findHomography(np.transpose(img_corners),
+                                       np.transpose(rot_projected) - np.float32([x_box + a_x_box, y_box + a_y_box]))
+        dst = cv2.warpPerspective(img, H, (a_w_box, a_h_box))
+
+    else:
+        dst = cv2.warpPerspective(img, H, (img.shape[1], img.shape[0]))
     return dst
 
-img = cv2.imread("images/tux.png")
+img = cv2.imread("images/tux.png", cv2.IMREAD_UNCHANGED)
 
 cv2.imshow("tux", img)
 for i in np.linspace(0, 360, 300):
     ax_angle = -60
-    rot = rotate(img, angle=i, angle_in=-ax_angle, angle_post=ax_angle)
+    rot = rotate(img,
+                 angle=i, angle_in=-ax_angle, angle_post=ax_angle,
+                 fit_in=True)
     cv2.imshow("rot", rot)
     c = cv2.waitKey(20)
     if c == ord('q'):
