@@ -3,6 +3,7 @@ from __future__ import print_function
 
 import numpy as np
 import cv2
+import alpha_utils as au
 
 def get_corners(img):
     h, w = img.shape[:2]
@@ -170,7 +171,7 @@ if __name__ == '__main__':
                     angle=i, angle_in=-ax_angle, angle_post=ax_angle,
                     fit_in=True)
         fitted = fit_in_size(rot, np.array([224, 224]), random_pad=False)
-        cv2.imshow("fitted", fitted)
+        cv2.imshow("fitted", au.transparent_blend(fitted))
         c = cv2.waitKey(20)
         if c == ord('q'):
             break
