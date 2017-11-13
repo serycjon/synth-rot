@@ -20,6 +20,12 @@ def _int64_feature(value):
 def no_alpha(img):
     return img[:, :, :3]
 
+def bgr2rgb(img):
+    return img[..., [2, 1, 0]]
+
+def to_rgb(bgra):
+    return bgra[:, :, [2, 1, 0]]
+
 if __name__ == '__main__':
     tfrecords_path = 'synth_rotation.tfrecords'
     writer = tf.python_io.TFRecordWriter(tfrecords_path)
@@ -28,7 +34,7 @@ if __name__ == '__main__':
     sz = np.array([224, 224])
     base = rotator.rotate(img, 0, angle_in=0, angle_post=0, fit_in=True)
     base_fitted = rotator.fit_in_size(base, sz, random_pad=True)
-    base_raw = no_alpha(base_fitted).tostring()
+    base_raw = to_rgb(base_fitted).tostring()
 
     for i in range(600):
         margin = 3
@@ -39,7 +45,7 @@ if __name__ == '__main__':
                              angle=out_angle, angle_in=0, angle_post=0,
                              fit_in=True)
         rot_fitted = rotator.fit_in_size(rot, sz, random_pad=True)
-        rot_raw = no_alpha(rot_fitted).tostring()
+        rot_raw = to_rgb(rot_fitted).tostring()
 
         example = tf.train.Example(features=tf.train.Features(feature={
             'height': _int64_feature(sz[0]),
