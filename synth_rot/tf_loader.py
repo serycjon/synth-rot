@@ -7,7 +7,7 @@ import tensorflow as tf
 IMAGE_HEIGHT = 224
 IMAGE_WIDTH  = 224
 
-def read_and_decode(filename_queue, batch_size=2):
+def read_and_decode(filename_queue, batch_size=2, capacity=30, num_threads=2):
     reader = tf.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
 
@@ -46,8 +46,8 @@ def read_and_decode(filename_queue, batch_size=2):
     
     bases, rots, angles = tf.train.shuffle_batch([base, rot, angle],
                                                  batch_size=batch_size,
-                                                 capacity=30,
-                                                 num_threads=2,
+                                                 capacity=capacity,
+                                                 num_threads=num_threads,
                                                  min_after_dequeue=10)
     
     return bases, rots, angles
