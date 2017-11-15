@@ -27,7 +27,7 @@ def to_rgb(bgra):
     return bgra[:, :, [2, 1, 0]]
 
 if __name__ == '__main__':
-    tfrecords_path = 'synth_rotation3.tfrecords'
+    tfrecords_path = 'synth_rotation4.tfrecords'
     writer = tf.python_io.TFRecordWriter(tfrecords_path)
     img = cv2.imread("images/tux.png", cv2.IMREAD_UNCHANGED)
 
@@ -37,8 +37,8 @@ if __name__ == '__main__':
     base_raw = to_rgb(base_fitted).tostring()
 
     for i in range(6000):
-        margin = 3
-        out_angle = np.random.rand() * (180 - 2*margin) - (90 - margin)
+        margin = 5
+        out_angle = np.random.rand() * (90 - margin)
 
         in_angle = np.random.rand() * 360
 
