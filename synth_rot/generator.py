@@ -26,44 +26,39 @@ def bgr2rgb(img):
 def to_rgb(bgra):
     return bgra[:, :, [2, 1, 0]]
 
-if __name__ == '__main__':
-    tfrecords_path = 'synth_rotation4.tfrecords'
-    writer = tf.python_io.TFRecordWriter(tfrecords_path)
-    img = cv2.imread("images/tux.png", cv2.IMREAD_UNCHANGED)
-
-    sz = np.array([224, 224])
+def generate_example(img, sz=np.array([224, 224]), margin=5):
     base = rotator.rotate(img, 0, angle_in=0, angle_post=0, fit_in=True)
     base_fitted = rotator.fit_in_size(base, sz, random_pad=True)
     base_raw = to_rgb(base_fitted).tostring()
 
-    for i in range(6000):
-        margin = 5
-        out_angle = np.random.rand() * (90 - margin)
+    out_angle = np.random.rand() * (90 - margin)
+    in_angle = np.random.rand() * 360
+    post_angle = np.random.rand() * 360
 
-        in_angle = np.random.rand() * 360
+    rot = rotator.rotate(img,
+                         angle=out_angle, angle_in=in_angle, angle_post=post_angle,
+                         fit_in=True)
+    rot_fitted = rotator.fit_in_size(rot, sz, random_pad=True)
+    rot_raw = to_rgb(rot_fitted).tostring()
 
-        post_angle = np.random.rand() * 360
-        print('out, in, post: {}, {}, {}'.format(out_angle, in_angle, post_angle))
+    example = tf.train.Example(features=tf.train.Features(feature={
+        'height': _int64_feature(sz[0]),
+        'width': _int64_feature(sz[1]),
+        'base_raw': _bytes_feature(base_raw),
+        'rot_raw': _bytes_feature(rot_raw),
+        'rot_angle': _float_feature(out_angle)}))
 
-        rot = rotator.rotate(img,
-                             angle=out_angle, angle_in=in_angle, angle_post=post_angle,
-                             fit_in=True)
-        rot_fitted = rotator.fit_in_size(rot, sz, random_pad=True)
-        rot_raw = to_rgb(rot_fitted).tostring()
+    return example
+    
 
-        example = tf.train.Example(features=tf.train.Features(feature={
-            'height': _int64_feature(sz[0]),
-            'width': _int64_feature(sz[1]),
-            'base_raw': _bytes_feature(base_raw),
-            'rot_raw': _bytes_feature(rot_raw),
-            'rot_angle': _float_feature(out_angle)}))
+if __name__ == '__main__':
+    tfrecords_path = 'tmp.tfrecords'
+    img = cv2.imread("images/tux.png", cv2.IMREAD_UNCHANGED)
+    N = 60
 
-        writer.write(example.SerializeToString())
-
-        # composite = np.hstack((base_fitted, rot_fitted))
-        # cv2.imshow("pair", composite)
-        # c = cv2.waitKey(0)
-        # if c == ord('q'):
-        #     break
-    writer.close()
-        
+    with tf.python_io.TFRecordWriter(tfrecords_path) as writer:
+        for i in range(N):
+            if i % (N/10) == 0:
+                print('{}%'.format(10*(i/(N/10))))
+            example = generate_example(img)
+            writer.write(example.SerializeToString())
