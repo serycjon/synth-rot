@@ -7,6 +7,9 @@ import cv2
 import argparse
 import rotator
 import tensorflow as tf
+import os
+import sys
+import random
 
 def _bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
@@ -23,8 +26,24 @@ def no_alpha(img):
 def bgr2rgb(img):
     return img[..., [2, 1, 0]]
 
-def to_rgb(bgra):
-    return bgra[:, :, [2, 1, 0]]
+def to_rgb(bgra, default=0):
+    rgb = bgra[:, :, [2, 1, 0]]
+    rgb[bgra[:, :, 3] < 127] = default
+    return rgb
+
+def get_valid_images(path):
+    ''' get all png images with transparency from path '''
+    print('Loading images from {}'.format(path))
+    images = []
+    files = next(os.walk(path))[2]
+    for file in files:
+        if os.path.splitext(file)[1] == '.png':
+            img = cv2.imread(os.path.join(path, file), cv2.IMREAD_UNCHANGED)  # read RGBA
+            if img.shape[2] == 4:
+                images.append(img)
+            else:
+                print('Not using image without alpha: {}'.format(file))
+    return images
 
 def generate_example(img, sz=np.array([224, 224]), margin=5):
     base = rotator.rotate(img, 0, angle_in=0, angle_post=0, fit_in=True)
@@ -52,13 +71,26 @@ def generate_example(img, sz=np.array([224, 224]), margin=5):
     
 
 if __name__ == '__main__':
-    tfrecords_path = 'tmp.tfrecords'
-    img = cv2.imread("images/tux.png", cv2.IMREAD_UNCHANGED)
-    N = 60
+    parser = argparse.ArgumentParser()
+    parser.add_argument('output', help='output name (without .tfrecords)')
+    parser.add_argument('--image', help='select one image in images/')
+    parser.add_argument('-N', help='number of generated examples', required=True, type=int)
+    args = vars(parser.parse_args())
 
+    if args['image'] is not None:
+        img_name = args['image']
+        images = [cv2.imread(os.path.join('images', img_name), cv2.IMREAD_UNCHANGED)]
+    else:
+        images = get_valid_images('images')
+
+    N = args['N']
+
+    tfrecords_path = '{}.tfrecords'.format(args['output'])
+
+    print('Generating {} training examples'.format(N))
     with tf.python_io.TFRecordWriter(tfrecords_path) as writer:
         for i in range(N):
-            if i % (N/10) == 0:
-                print('{}%'.format(10*(i/(N/10))))
+            print('i: {}'.format(i))
+            img = random.choice(images)
             example = generate_example(img)
             writer.write(example.SerializeToString())

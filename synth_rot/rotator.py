@@ -125,7 +125,7 @@ def fit_in_size(img, sz, random_pad=True):
 def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=True):
     h, w = img.shape[:2]
     if Z is None:
-        Z = 800.0
+        Z = max(img.shape)
     if center is None:
         center = np.matrix([[h/2.0], [w/2.0]])
     img_corners = get_corners(img)
