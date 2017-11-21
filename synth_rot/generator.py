@@ -46,7 +46,8 @@ def get_valid_images(path):
     return images
 
 def generate_example(img, sz=np.array([224, 224]), margin=5):
-    base = rotator.rotate(img, 0, angle_in=0, angle_post=0, fit_in=True)
+    base_in_angle = np.random.rand() * 360
+    base = rotator.rotate(img, 0, angle_in=base_in_angle, angle_post=0, fit_in=True)
     base_fitted = rotator.fit_in_size(base, sz, random_pad=True)
     base_raw = to_rgb(base_fitted).tostring()
 
