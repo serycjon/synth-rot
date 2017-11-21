@@ -10,6 +10,8 @@ if __name__ == '__main__':
     tfrecords_filename = 'synth_rotation.tfrecords'
     record_iterator = tf.python_io.tf_record_iterator(path=tfrecords_filename)
 
+    angles = []
+
     for string_record in record_iterator:
         example = tf.train.Example()
         example.ParseFromString(string_record)
@@ -34,6 +36,8 @@ if __name__ == '__main__':
                       .float_list
                       .value[0])
 
+        angles.append(angle)
+
         base_1d = np.fromstring(base_string, dtype=np.uint8)
         base = base_1d.reshape((height, width, -1))
 
@@ -46,3 +50,6 @@ if __name__ == '__main__':
         c = cv2.waitKey(0)
         if c == ord('q'):
             break
+
+    hist, _ = np.histogram(angles, bins=10, range=(0, 90))
+    print('histogram of angles: {}'.format(hist))
