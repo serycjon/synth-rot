@@ -45,7 +45,7 @@ if __name__ == '__main__':
         rot = rot_1d.reshape((height, width, -1))
 
         composition = np.hstack((base, rot))
-        cv2.imshow('example', composition)
+        cv2.imshow('example', cv2.cvtColor(composition, cv2.COLOR_RGB2BGR))
         print('angle: {}'.format(angle))
         c = cv2.waitKey(0)
         if c == ord('q'):
