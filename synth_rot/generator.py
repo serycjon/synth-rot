@@ -74,14 +74,19 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('output', help='output name (without .tfrecords)')
     parser.add_argument('--image', help='select one image in images/')
+    parser.add_argument('--val', help='use validation image set', action='store_true')
     parser.add_argument('-N', help='number of generated examples', required=True, type=int)
     args = vars(parser.parse_args())
 
+    if args['val']:
+        base_img_dir = 'val_images'
+    else:
+        base_img_dir = 'images'
     if args['image'] is not None:
         img_name = args['image']
-        images = [cv2.imread(os.path.join('images', img_name), cv2.IMREAD_UNCHANGED)]
+        images = [cv2.imread(os.path.join(base_img_dir, img_name), cv2.IMREAD_UNCHANGED)]
     else:
-        images = get_valid_images('images')
+        images = get_valid_images(base_img_dir)
 
     N = args['N']
 
