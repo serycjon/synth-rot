@@ -5,9 +5,13 @@ from __future__ import print_function
 import tensorflow as tf
 import cv2
 import numpy as np
+import argparse
 
 if __name__ == '__main__':
-    tfrecords_filename = 'synth_rotation.tfrecords'
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--db', help='tfrecords file to load', required=True)
+    args = vars(parser.parse_args())
+    tfrecords_filename = args['db']
     record_iterator = tf.python_io.tf_record_iterator(path=tfrecords_filename)
 
     angles = []
