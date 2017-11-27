@@ -9,8 +9,19 @@ import alpha_utils as au
 import os
 import argparse
 
+def crop_to_alpha(img):
+    ''' crop BGRA image to the minimal straight rectangle '''
+    alpha = img[..., 3]
+    ret, thresh = cv2.threshold(alpha,127,255,0)
+    contours = cv2.findContours(thresh, 1, 2)
+    cnt = contours[0]
+    x, y, w, h = cv2.boundingRect(cnt)
+    crop = img[y:y+h, x:x+w, :]
+    return crop
+
 def extract_object(img, seg):
-    return np.dstack((img, seg))
+    obj_with_alpha = np.dstack((img, seg))
+    return crop_to_alpha(obj_with_alpha)
 
 def extract_from_sequence(base_path, sequence, frame):
     ''' extract object from cointracking sequence stored in base_path.
@@ -42,6 +53,8 @@ if __name__ == '__main__':
         obj = extract_object(rgb, seg)
     else:
         obj = extract_from_sequence(args['base_path'], args['sequence'], args['frame'])
+
+    obj = crop_to_alpha(obj)
 
     cv2.imshow("object", au.transparent_blend(obj))
     cv2.waitKey(0)
