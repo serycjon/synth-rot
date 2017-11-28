@@ -4,6 +4,7 @@ from __future__ import print_function
 import numpy as np
 import cv2
 import alpha_utils as au
+from utils import compatible_contours
 
 def get_corners(img):
     h, w = img.shape[:2]
@@ -53,7 +54,7 @@ def get_camera(img, f=None):
 def alpha_bbox(img):
     alpha = img[:, :, 3]
     ret, thresh = cv2.threshold(alpha,127,255,0)
-    contours = cv2.findContours(thresh, 1, 2)
+    contours = compatible_countours(thresh)
     
     cnt = contours[0]
     return cv2.boundingRect(cnt)
