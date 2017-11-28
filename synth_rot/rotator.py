@@ -4,7 +4,7 @@ from __future__ import print_function
 import numpy as np
 import cv2
 import alpha_utils as au
-from utils import compatible_contours
+from utils import compatible_contours, compatible_boundingrect
 
 def get_corners(img):
     h, w = img.shape[:2]
@@ -54,7 +54,7 @@ def get_camera(img, f=None):
 def alpha_bbox(img):
     alpha = img[:, :, 3]
     ret, thresh = cv2.threshold(alpha,127,255,0)
-    contours = compatible_countours(thresh)
+    contours = compatible_contours(thresh)
     
     cnt = contours[0]
     return cv2.boundingRect(cnt)
@@ -129,7 +129,8 @@ def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=Tru
         Z = max(img.shape)
     if center is None:
         center = np.matrix([[h/2.0], [w/2.0]])
-    img_corners = get_corners(img)
+    my_type = np.float32
+    img_corners = get_corners(img).astype(my_type)
     space_corners = add_z(img_corners - center, 0)
     R_in = rot_z(angle_in)
     R = rot_x(angle)
@@ -142,12 +143,13 @@ def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=Tru
     K = get_camera(img, Z)
     P = np.hstack((K, np.transpose(np.matrix([0, 0, Z]))))
     rot_projected = p2e(np.matmul(P, e2p(new_corners))) + center
+    rot_projected = rot_projected.astype(my_type)
 
     H, status = cv2.findHomography(np.transpose(img_corners),
                                    np.transpose(rot_projected))
     if fit_in:
         # find a homography that fits the whole image inside
-        x_box, y_box, w_box, h_box = cv2.boundingRect(
+        x_box, y_box, w_box, h_box = compatible_boundingrect(
             np.float32(np.transpose(rot_projected)))
         H, status = cv2.findHomography(np.transpose(img_corners),
                                        np.transpose(rot_projected) - np.float32([x_box, y_box]))

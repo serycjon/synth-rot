@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 
 def is_cv2():
     # if we are using OpenCV 2, then our cv2.__version__ will start
@@ -28,3 +29,9 @@ def compatible_contours(thresh):
                                             cv2.CHAIN_APPROX_SIMPLE)
     return contours
     
+def compatible_boundingrect(points):
+    if is_cv2():
+        points = np.array([p for p in points])
+        return cv2.boundingRect(points)
+    elif is_cv3():
+        return cv2.boundingRect(points)
