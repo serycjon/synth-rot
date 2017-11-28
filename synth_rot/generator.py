@@ -69,6 +69,14 @@ def generate_example(img, sz=np.array([224, 224]), margin=5):
         'rot_angle': _float_feature(out_angle)}))
 
     return example
+
+def generate(images, output, N):
+    with tf.python_io.TFRecordWriter(output) as writer:
+        for i in range(N):
+            print('generating {}/{}'.format(i, N))
+            img = random.choice(images)
+            example = generate_example(img)
+            writer.write(example.SerializeToString())
     
 
 if __name__ == '__main__':
@@ -90,13 +98,5 @@ if __name__ == '__main__':
         images = get_valid_images(base_img_dir)
 
     N = args['N']
-
     tfrecords_path = '{}.tfrecords'.format(args['output'])
-
-    print('Generating {} training examples'.format(N))
-    with tf.python_io.TFRecordWriter(tfrecords_path) as writer:
-        for i in range(N):
-            print('i: {}'.format(i))
-            img = random.choice(images)
-            example = generate_example(img)
-            writer.write(example.SerializeToString())
+    generate(images, tfrecords_path, N)
