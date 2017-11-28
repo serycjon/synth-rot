@@ -73,7 +73,7 @@ def generate_example(img, sz=np.array([224, 224]), margin=5):
 def generate(images, output, N):
     with tf.python_io.TFRecordWriter(output) as writer:
         for i in range(N):
-            print('generating {}/{}'.format(i, N))
+            print('generating {}/{}'.format(i+1, N))
             img = random.choice(images)
             example = generate_example(img)
             writer.write(example.SerializeToString())
