@@ -45,6 +45,18 @@ def get_valid_images(path):
                 print('Not using image without alpha: {}'.format(file))
     return images
 
+def dropout(img):
+    ''' insert random circular hole '''
+    h, w = img.shape[:2]
+    center_x = int(np.random.uniform(0, w))
+    center_y = int(np.random.uniform(0, h))
+    radius = int(np.random.uniform(h/10, h/3))
+
+    alpha = img[..., 3].copy()
+    cv2.circle(alpha, (center_x, center_y), radius, color=0, thickness=-1)
+    img[..., 3] = alpha
+    return img
+
 def generate_example(img, sz=np.array([224, 224]), margin=5, rotate_base=True):
     if rotate_base:
         base_in_angle = np.random.rand() * 360
@@ -62,6 +74,10 @@ def generate_example(img, sz=np.array([224, 224]), margin=5, rotate_base=True):
                          angle=out_angle, angle_in=in_angle, angle_post=post_angle,
                          fit_in=True)
     rot_fitted = rotator.fit_in_size(rot, sz, random_pad=True)
+
+    dropout_chance = np.random.rand()
+    if dropout_chance < 1:
+        rot_fitted = dropout(rot_fitted)
     rot_raw = to_rgb(rot_fitted).tostring()
 
     example = tf.train.Example(features=tf.train.Features(feature={
