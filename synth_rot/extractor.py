@@ -15,8 +15,12 @@ def crop_to_alpha(img):
     alpha = img[..., 3]
     ret, thresh = cv2.threshold(alpha,127,255,0)
     contours = compatible_contours(thresh)
-    cnt = contours[0]
-    x, y, w, h = cv2.boundingRect(cnt)
+    try:
+        cnt = contours[0]
+        x, y, w, h = cv2.boundingRect(cnt)
+    except IndexError:
+        x, y, w, h = 0, 0, 1, 1
+
     crop = img[y:y+h, x:x+w, :]
     return crop
 
