@@ -89,13 +89,19 @@ def generate_example(img, sz=np.array([224, 224]), margin=5, rotate_base=True):
 
     return example
 
-def generate(images, output, N, max_entries=None, rotate_base=True):
-    writer = tf.python_io.TFRecordWriter(output)
+def generate(images, output, N, max_entries=None, rotate_base=True, compress=False):
+    if compress:
+        options = tf.python_io.TFRecordOptions(
+            compression_type=tf.python_io.TFRecordCompressionType.ZLIB)
+    else:
+        options = None
+
+    writer = tf.python_io.TFRecordWriter(output, options=options)
     for i in range(N):
         if (i > 0) and (max_entries is not None) and (i%max_entries == 0):
             writer.close()
             shard = i/max_entries
-            writer = tf.python_io.TFRecordWriter('{}-{}'.format(output, shard))
+            writer = tf.python_io.TFRecordWriter('{}-{}'.format(output, shard), options=options)
         print('generating {}/{}'.format(i+1, N))
         img = random.choice(images)
         example = generate_example(img, rotate_base=rotate_base)
@@ -110,6 +116,7 @@ if __name__ == '__main__':
     parser.add_argument('--val', help='use validation image set', action='store_true')
     parser.add_argument('-N', help='number of generated examples', required=True, type=int)
     parser.add_argument('--max', help='max entries per tfrecords file', type=int)
+    parser.add_argument('--compress', help='compress the outputs', action='store_true')
     args = vars(parser.parse_args())
 
     if args['val']:
@@ -124,4 +131,4 @@ if __name__ == '__main__':
 
     N = args['N']
     tfrecords_path = '{}.tfrecords'.format(args['output'])
-    generate(images, tfrecords_path, N, args['max'])
+    generate(images, tfrecords_path, N, args['max'], compress=args['compress'])

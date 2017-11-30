@@ -10,9 +10,16 @@ import argparse
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--db', help='tfrecords file to load', required=True)
+    parser.add_argument('--compress', help='read compressed files', action='store_true')
     args = vars(parser.parse_args())
     tfrecords_filename = args['db']
-    record_iterator = tf.python_io.tf_record_iterator(path=tfrecords_filename)
+    if args['compress']:
+        options = tf.python_io.TFRecordOptions(
+            compression_type=tf.python_io.TFRecordCompressionType.ZLIB)
+    else:
+        options = None
+        
+    record_iterator = tf.python_io.tf_record_iterator(path=tfrecords_filename, options=options)
 
     angles = []
 

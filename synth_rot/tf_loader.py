@@ -7,8 +7,13 @@ import tensorflow as tf
 IMAGE_HEIGHT = 224
 IMAGE_WIDTH  = 224
 
-def read_and_decode(filename_queue, batch_size=2, capacity=30, num_threads=2):
-    reader = tf.TFRecordReader()
+def read_and_decode(filename_queue, batch_size=2, capacity=30, num_threads=2, compressed=False):
+    if compressed:
+        options = tf.python_io.TFRecordOptions(
+            compression_type=tf.python_io.TFRecordCompressionType.ZLIB)
+    else:
+        options = None
+    reader = tf.TFRecordReader(options=options)
     _, serialized_example = reader.read(filename_queue)
 
     features = tf.parse_single_example(
