@@ -59,7 +59,8 @@ def dropout(img):
 
 def generate_example(img, sz=np.array([224, 224]),
                      angle_margin=5,
-                     rotate_base=True, margin=0, center=False):
+                     rotate_base=True, margin=0, center=False,
+                     dropout_chance=1):
     if rotate_base:
         base_in_angle = np.random.rand() * 360
     else:
@@ -79,8 +80,8 @@ def generate_example(img, sz=np.array([224, 224]),
     rot_fitted = rotator.fit_in_size(rot, sz, random_pad=False,
                                      margin=margin, center=center)
 
-    dropout_chance = np.random.rand()
-    if dropout_chance < 1:
+    dropout_rand = np.random.rand()
+    if dropout_rand < droupout_chance:
         rot_fitted = dropout(rot_fitted)
     rot_raw = to_rgb(rot_fitted).tostring()
 
@@ -94,7 +95,8 @@ def generate_example(img, sz=np.array([224, 224]),
     return example
 
 def generate(images, output, N, max_entries=None,
-             rotate_base=True, compress=False, margin=0, center=False):
+             rotate_base=True, compress=False, margin=0, center=False,
+             dropout_chance=1):
     if compress:
         options = tf.python_io.TFRecordOptions(
             compression_type=tf.python_io.TFRecordCompressionType.ZLIB)
@@ -110,7 +112,8 @@ def generate(images, output, N, max_entries=None,
         print('generating {}/{}'.format(i+1, N))
         img = random.choice(images)
         example = generate_example(img, rotate_base=rotate_base,
-                                   margin=margin, center=center)
+                                   margin=margin, center=center,
+                                   dropout_chance=dropout_chance)
         writer.write(example.SerializeToString())
     writer.close()
     
