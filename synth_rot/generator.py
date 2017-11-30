@@ -81,7 +81,7 @@ def generate_example(img, sz=np.array([224, 224]),
                                      margin=margin, center=center)
 
     dropout_rand = np.random.rand()
-    if dropout_rand < droupout_chance:
+    if dropout_rand < dropout_chance:
         rot_fitted = dropout(rot_fitted)
     rot_raw = to_rgb(rot_fitted).tostring()
 
