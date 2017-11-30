@@ -65,7 +65,7 @@ def try_get(xs, index, default):
     except IndexError:
         return default
 
-def fit_in_size(img, sz, random_pad=True):
+def fit_in_size(img, sz, random_pad=True, center=False, margin=0):
     '''
     1. resize so that the img tightly fits into sz, while keeping aspect ratio
     2. pad to the exact sz:
@@ -73,11 +73,15 @@ def fit_in_size(img, sz, random_pad=True):
             randomly from both sides
         else:
             first img, then pad
+    - if margin is specified, there is that amount of padding guaranteed from all sides
+    - if center is True, the objects center of mass will be centered
     '''
     channels = try_get(img.shape, 2, 1)
     dtype = img.dtype
     ## Fit while keeping aspect ratio
     img_sz = np.float32(img.shape[:2])
+    final_sz = sz.copy()
+    sz = sz - margin*2
     ratios = sz / img_sz
 
     h_scaled = np.round(img_sz * ratios[0])
@@ -96,32 +100,46 @@ def fit_in_size(img, sz, random_pad=True):
     padding = sz - new_sz
     if padding[0] > 0:
         p = padding[0]
-        if random_pad:
-            pre = np.random.randint(0, p+1)
+        if center:
+            pre = int(p/2)
             post = p - pre
         else:
-            pre = 0
-            post = p
+            if random_pad:
+                pre = np.random.randint(0, p+1)
+                post = p - pre
+            else:
+                pre = 0
+                post = p
 
         pad_pre = np.zeros((pre, sz[1], channels), dtype=dtype)           
         pad_post = np.zeros((post, sz[1], channels), dtype=dtype)           
         padded = np.vstack((pad_pre, resized, pad_post))
     elif padding[1] > 0:
         p = padding[1]
-        if random_pad:
-            pre = np.random.randint(0, p+1)
+        if center:
+            pre = int(p/2)
             post = p - pre
         else:
-            pre = 0
-            post = p
+            if random_pad:
+                pre = np.random.randint(0, p+1)
+                post = p - pre
+            else:
+                pre = 0
+                post = p
 
         pad_pre = np.zeros((sz[0], pre, channels), dtype=dtype)
         pad_post = np.zeros((sz[0], post, channels), dtype=dtype)
         padded = np.hstack((pad_pre, resized, pad_post))
     else:
         padded = resized
+    # finalize by adding the margins
+    if margin == 0:
+        final = padded
+    else:
+        final = np.zeros((final_sz[0], final_sz[1], channels), dtype=dtype)
+        final[margin:margin+sz[0], margin:margin+sz[1], :] = padded
 
-    return padded
+    return final
 
 def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=True):
     h, w = img.shape[:2]

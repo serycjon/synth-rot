@@ -57,23 +57,27 @@ def dropout(img):
     img[..., 3] = alpha
     return img
 
-def generate_example(img, sz=np.array([224, 224]), margin=5, rotate_base=True):
+def generate_example(img, sz=np.array([224, 224]),
+                     angle_margin=5,
+                     rotate_base=True, margin=0, center=False):
     if rotate_base:
         base_in_angle = np.random.rand() * 360
     else:
         base_in_angle = 0
     base = rotator.rotate(img, 0, angle_in=base_in_angle, angle_post=0, fit_in=True)
-    base_fitted = rotator.fit_in_size(base, sz, random_pad=True)
+    base_fitted = rotator.fit_in_size(base, sz, random_pad=False,
+                                      margin=margin, center=center)
     base_raw = to_rgb(base_fitted).tostring()
 
-    out_angle = np.random.rand() * (90 - margin)
+    out_angle = np.random.rand() * (90 - angle_margin)
     in_angle = np.random.rand() * 360
     post_angle = np.random.rand() * 360
 
     rot = rotator.rotate(img,
                          angle=out_angle, angle_in=in_angle, angle_post=post_angle,
                          fit_in=True)
-    rot_fitted = rotator.fit_in_size(rot, sz, random_pad=True)
+    rot_fitted = rotator.fit_in_size(rot, sz, random_pad=False,
+                                     margin=margin, center=center)
 
     dropout_chance = np.random.rand()
     if dropout_chance < 1:
@@ -89,7 +93,8 @@ def generate_example(img, sz=np.array([224, 224]), margin=5, rotate_base=True):
 
     return example
 
-def generate(images, output, N, max_entries=None, rotate_base=True, compress=False):
+def generate(images, output, N, max_entries=None,
+             rotate_base=True, compress=False, margin=0, center=False):
     if compress:
         options = tf.python_io.TFRecordOptions(
             compression_type=tf.python_io.TFRecordCompressionType.ZLIB)
@@ -104,7 +109,8 @@ def generate(images, output, N, max_entries=None, rotate_base=True, compress=Fal
             writer = tf.python_io.TFRecordWriter('{}-{}'.format(output, shard), options=options)
         print('generating {}/{}'.format(i+1, N))
         img = random.choice(images)
-        example = generate_example(img, rotate_base=rotate_base)
+        example = generate_example(img, rotate_base=rotate_base,
+                                   margin=margin, center=center)
         writer.write(example.SerializeToString())
     writer.close()
     
@@ -131,4 +137,5 @@ if __name__ == '__main__':
 
     N = args['N']
     tfrecords_path = '{}.tfrecords'.format(args['output'])
-    generate(images, tfrecords_path, N, args['max'], compress=args['compress'])
+    generate(images, tfrecords_path, N, args['max'], compress=args['compress'],
+             margin=20, center=True)
