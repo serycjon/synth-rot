@@ -55,8 +55,17 @@ def alpha_bbox(img):
     alpha = img[:, :, 3]
     ret, thresh = cv2.threshold(alpha,127,255,0)
     contours = compatible_contours(thresh)
-    
-    cnt = contours[0]
+    if len(contours) > 1:
+        max_area = 0
+        contour = None
+        for cnt in contours:
+            area = cv2.contourArea(cnt)
+            if area > max_area:
+                max_area = area
+                contour = cnt
+        cnt = contour
+    else:
+        cnt = contours[0]
     return cv2.boundingRect(cnt)
 
 def try_get(xs, index, default):
