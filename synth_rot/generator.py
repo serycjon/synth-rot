@@ -126,6 +126,7 @@ if __name__ == '__main__':
     parser.add_argument('-N', help='number of generated examples', required=True, type=int)
     parser.add_argument('--max', help='max entries per tfrecords file', type=int)
     parser.add_argument('--compress', help='compress the outputs', action='store_true')
+    parser.add_argument('--dropout', help='randomly drop a circular hole', action='store_true')
     args = vars(parser.parse_args())
 
     if args['val']:
@@ -138,7 +139,12 @@ if __name__ == '__main__':
     else:
         images = get_valid_images(base_img_dir)
 
+    if args['dropout']:
+        dropout_chance = 1
+    else:
+        dropout_chance = 0
+
     N = args['N']
     tfrecords_path = '{}.tfrecords'.format(args['output'])
     generate(images, tfrecords_path, N, args['max'], compress=args['compress'],
-             margin=20, center=True)
+             margin=20, center=True, dropout_chance=dropout_chance)
