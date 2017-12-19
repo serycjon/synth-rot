@@ -43,11 +43,12 @@ if __name__ == '__main__':
                       .bytes_list
                       .value[0])
 
-        angle = float(example.features.feature['rot_angle']
-                      .float_list
-                      .value[0])
+        axis_angle_string = (example.features.feature['axis_angle']
+                             .bytes_list
+                             .value[0])
+        axis_angle = np.fromstring(axis_angle_string, dtype=np.float32)
 
-        angles.append(angle)
+        # angles.append(angle)
 
         base_1d = np.fromstring(base_string, dtype=np.uint8)
         base = base_1d.reshape((height, width, -1))
@@ -57,7 +58,7 @@ if __name__ == '__main__':
 
         composition = np.hstack((base, rot))
         cv2.imshow('example', cv2.cvtColor(composition, cv2.COLOR_RGB2BGR))
-        print('angle: {}'.format(angle))
+        print('angle: {}'.format(axis_angle))
         c = cv2.waitKey(0)
         if c == ord('q'):
             break

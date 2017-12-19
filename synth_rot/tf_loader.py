@@ -23,7 +23,7 @@ def read_and_decode(filename_queue, batch_size=2, capacity=30, num_threads=2, co
             'width': tf.FixedLenFeature([], tf.int64),
             'base_raw': tf.FixedLenFeature([], tf.string),
             'rot_raw': tf.FixedLenFeature([], tf.string),
-            'rot_angle': tf.FixedLenFeature([], tf.float32)})
+            'axis_angle': tf.FixedLenFeature([], tf.string)})
 
     # Convert from a scalar string tensor (whose single string has
     # length mnist.IMAGE_PIXELS) to a uint8 tensor with shape
@@ -34,7 +34,8 @@ def read_and_decode(filename_queue, batch_size=2, capacity=30, num_threads=2, co
     height = tf.cast(features['height'], tf.int32)
     width = tf.cast(features['width'], tf.int32)
 
-    angle = features['rot_angle']
+    axis_angle = tf.decode_raw(features['axis_angle'], tf.float32)
+    axis_angle = tf.reshape(axis_angle, [1, 4])
     
     base_shape = tf.stack([height, width, 3])
     rot_shape = tf.stack([height, width, 3])
@@ -49,22 +50,23 @@ def read_and_decode(filename_queue, batch_size=2, capacity=30, num_threads=2, co
                                                  target_height=IMAGE_HEIGHT,
                                                  target_width=IMAGE_WIDTH)
     
-    bases, rots, angles = tf.train.shuffle_batch([base, rot, angle],
-                                                 batch_size=batch_size,
-                                                 capacity=capacity,
-                                                 num_threads=num_threads,
-                                                 min_after_dequeue=10)
+    bases, rots, axis_angles = tf.train.shuffle_batch([base, rot, axis_angle],
+                                                      batch_size=batch_size,
+                                                      capacity=capacity,
+                                                      num_threads=num_threads,
+                                                      min_after_dequeue=10)
     
-    return bases, rots, angles
+    return bases, rots, axis_angles
 
 if __name__ == '__main__':
-    tfrecords_filename = 'synth_rotation.tfrecords'
+    tfrecords_filename = 'pokus.tfrecords'
 
     filename_queue = tf.train.string_input_producer(
         [tfrecords_filename], num_epochs=10)
 
-    base, rot, angle = read_and_decode(filename_queue, batch_size=5)
+    base, rot, angle = read_and_decode(filename_queue, batch_size=5, compressed=True)
 
+    import numpy as np
     with tf.Session() as sess:
         sess.run(tf.local_variables_initializer())
         sess.run(tf.global_variables_initializer())
@@ -75,6 +77,9 @@ if __name__ == '__main__':
         for i in range(5):
             b, r, a = sess.run([base, rot, angle])
             print('b[0, ...].shape: {}'.format(b[0, ...].shape))
+            # print('a: {}'.format(a))
+            a = a[0, 0, :3]
+            print('np.linalg.norm(a): {}'.format(np.linalg.norm(a)))
             print('a: {}'.format(a))
 
         coord.request_stop()

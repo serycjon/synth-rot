@@ -80,6 +80,9 @@ def generate_example(img, sz=np.array([224, 224]),
     rot_fitted = rotator.fit_in_size(rot, sz, random_pad=False,
                                      margin=margin, center=center)
 
+    axis_angle = rotator.get_axis_angle(out_angle, in_angle, post_angle)[:4]
+    axis_angle_raw = axis_angle.astype(np.float32).tostring()
+
     dropout_rand = np.random.rand()
     if dropout_rand < dropout_chance:
         rot_fitted = dropout(rot_fitted)
@@ -90,7 +93,7 @@ def generate_example(img, sz=np.array([224, 224]),
         'width': _int64_feature(sz[1]),
         'base_raw': _bytes_feature(base_raw),
         'rot_raw': _bytes_feature(rot_raw),
-        'rot_angle': _float_feature(out_angle)}))
+        'axis_angle': _bytes_feature(axis_angle_raw)}))
 
     return example
 
@@ -147,4 +150,4 @@ if __name__ == '__main__':
     N = args['N']
     tfrecords_path = '{}.tfrecords'.format(args['output'])
     generate(images, tfrecords_path, N, args['max'], compress=args['compress'],
-             margin=20, center=True, dropout_chance=dropout_chance)
+             margin=20, center=True, dropout_chance=dropout_chance, rotate_base=False)
