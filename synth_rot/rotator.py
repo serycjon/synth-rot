@@ -351,6 +351,22 @@ def fit_in_size(img, sz, random_pad=True, center=False, margin=0):
 
     return final
 
+def get_axis_angle(angle, angle_in, angle_post):
+    R_in = rot_z(angle_in)
+    R = rot_x(angle)
+    R_post = rot_z(angle_post)
+    R_all = np.matmul(R_post, np.matmul(R, R_in))
+
+    axis_angle = vrrotmat2vec(R_all)
+
+    # convert back to R matrix to check correctness
+    R_back = vrrotvec2mat(axis_angle)
+    close = np.all(np.isclose(R_all, R_back))
+    if not close:
+        raise RuntimeError("axis_angle reconstructed R not close to the original\n{}\nvs\n{}".format(R_all, R_back))
+
+    return axis_angle
+
 def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=True):
     h, w = img.shape[:2]
     if Z is None:
@@ -367,14 +383,6 @@ def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=Tru
                             np.matmul(R_in,
                                       space_corners))
     new_corners = np.matmul(R_post, new_corners)
-
-    R_all = np.matmul(R_post, np.matmul(R, R_in))
-    axis_angle = vrrotmat2vec(R_all)
-    # print('axis_angle: {}'.format(axis_angle[:4]))
-    R_back = vrrotvec2mat(axis_angle)
-    close = np.all(np.isclose(R_all, R_back))
-    if not close:
-        raise RuntimeError("axis_angle reconstructed R not close to the original\n{}\nvs\n{}".format(R_all, R_back))
 
     K = get_camera(img, Z)
     P = np.hstack((K, np.transpose(np.matrix([0, 0, Z]))))
