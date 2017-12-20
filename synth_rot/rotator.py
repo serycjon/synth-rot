@@ -376,7 +376,7 @@ def R_from_axis_angle(axis_angle):
     angle = np.linalg.norm(axis_angle)
 
     if angle > 0:
-        axis = axis / angle
+        axis = axis_angle / angle
     else:
         axis = np.float32([0, 0, 1])
 
