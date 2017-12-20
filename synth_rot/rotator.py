@@ -373,6 +373,7 @@ def np_cross_matrix3(x):
                       [-x[1], x[0], 0]])
 
 def R_from_axis_angle(axis_angle):
+    axis_angle = np.squeeze(axis_angle)
     angle = np.linalg.norm(axis_angle)
 
     if angle > 0:
