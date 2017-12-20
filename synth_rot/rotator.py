@@ -367,7 +367,26 @@ def get_axis_angle(angle, angle_in, angle_post):
 
     return axis_angle
 
-def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=True):
+def np_cross_matrix3(x):
+    return np.matrix([[0, -x[2], x[1]],
+                      [x[2], 0, -x[0]],
+                      [-x[1], x[0], 0]])
+
+def R_from_axis_angle(axis_angle):
+    angle = np.linalg.norm(axis_angle)
+
+    if angle > 0:
+        axis = axis / angle
+    else:
+        axis = np.float32([0, 0, 1])
+
+    cross_axis = np_cross_matrix3(axis)
+    cross_axis_sq = np.matmul(cross_axis, cross_axis)
+
+    R = np.eye(3, 3) + np.sin(angle) * cross_axis + (1-np.cos(angle)) * cross_axis_sq
+    return R
+
+def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=True, axis_angle=None):
     h, w = img.shape[:2]
     if Z is None:
         Z = max(img.shape)
@@ -376,13 +395,17 @@ def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=Tru
     my_type = np.float32
     img_corners = get_corners(img).astype(my_type)
     space_corners = add_z(img_corners - center, 0)
-    R_in = rot_z(angle_in)
-    R = rot_x(angle)
-    R_post = rot_z(angle_post)
-    new_corners = np.matmul(R,
-                            np.matmul(R_in,
-                                      space_corners))
-    new_corners = np.matmul(R_post, new_corners)
+    if axis_angle is None:
+        R_in = rot_z(angle_in)
+        R = rot_x(angle)
+        R_post = rot_z(angle_post)
+        new_corners = np.matmul(R,
+                                np.matmul(R_in,
+                                        space_corners))
+        new_corners = np.matmul(R_post, new_corners)
+    else:
+        R = R_from_axis_angle(axis_angle)
+        new_corners = np.matmul(R, space_corners)
 
     K = get_camera(img, Z)
     P = np.hstack((K, np.transpose(np.matrix([0, 0, Z]))))

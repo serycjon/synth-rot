@@ -65,7 +65,7 @@ if __name__ == '__main__':
     filename_queue = tf.train.string_input_producer(
         [tfrecords_filename], num_epochs=10)
 
-    base, rot, angle = read_and_decode(filename_queue, batch_size=5, compressed=True)
+    base, rot, angle = read_and_decode(filename_queue, batch_size=1, compressed=True)
 
     import numpy as np
     with tf.Session() as sess:
@@ -75,13 +75,13 @@ if __name__ == '__main__':
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(coord=coord)
 
-        for i in range(5):
+        for i in range(50):
             b, r, a = sess.run([base, rot, angle])
-            print('b[0, ...].shape: {}'.format(b[0, ...].shape))
+            # print('b[0, ...].shape: {}'.format(b[0, ...].shape))
             # print('a: {}'.format(a))
             # a = a[0, 0, :3]
             print('np.linalg.norm(a): {}'.format(np.linalg.norm(a)))
-            print('a: {}'.format(a))
+            # print('a: {}'.format(a))
 
         coord.request_stop()
         coord.join(threads)
