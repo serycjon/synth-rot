@@ -35,8 +35,8 @@ def read_and_decode(filename_queue, batch_size=2, capacity=30, num_threads=2, co
     width = tf.cast(features['width'], tf.int32)
 
     axis_angle = tf.decode_raw(features['axis_angle'], tf.float32)
-    axis_angle = tf.reshape(axis_angle, [1, 4])
     axis_angle = tf.slice(axis_angle, [0], [3]) * tf.slice(axis_angle, [3], [1])
+    axis_angle = tf.reshape(axis_angle, [1, 3])
     
     base_shape = tf.stack([height, width, 3])
     rot_shape = tf.stack([height, width, 3])
@@ -79,7 +79,7 @@ if __name__ == '__main__':
             b, r, a = sess.run([base, rot, angle])
             print('b[0, ...].shape: {}'.format(b[0, ...].shape))
             # print('a: {}'.format(a))
-            a = a[0, 0, :3]
+            # a = a[0, 0, :3]
             print('np.linalg.norm(a): {}'.format(np.linalg.norm(a)))
             print('a: {}'.format(a))
 
