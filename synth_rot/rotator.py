@@ -51,7 +51,7 @@ def get_camera(img, f=None):
                    [0, 0, 1]])
     return K
 
-def alpha_bbox(img):
+def alpha_contour(img):
     alpha = img[:, :, 3]
     ret, thresh = cv2.threshold(alpha,127,255,0)
     contours = compatible_contours(thresh)
@@ -66,6 +66,10 @@ def alpha_bbox(img):
         cnt = contour
     else:
         cnt = contours[0]
+    return cnt
+    
+def alpha_bbox(img):
+    cnt = alpha_contour(img)
     return cv2.boundingRect(cnt)
 
 def try_get(xs, index, default):
@@ -175,19 +179,27 @@ def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=Tru
     H, status = cv2.findHomography(np.transpose(img_corners),
                                    np.transpose(rot_projected))
     if fit_in:
-        # find a homography that fits the whole image inside
-        x_box, y_box, w_box, h_box = compatible_boundingrect(
-            np.float32(np.transpose(rot_projected)))
-        H, status = cv2.findHomography(np.transpose(img_corners),
-                                       np.transpose(rot_projected) - np.float32([x_box, y_box]))
-        dst = cv2.warpPerspective(img, H, (w_box, h_box))
+        orig_contour = e2p(np.transpose(np.squeeze(alpha_contour(img))))
+        projected_contour = p2e(np.matmul(H, orig_contour))
+        mins  = np.amin(projected_contour, axis=1).tolist()
+        maxes = np.amax(projected_contour, axis=1).tolist()
+        projected_corners = [[mins[0], mins[1]],
+                             [mins[0], maxes[1]],
+                             [maxes[0], mins[1]],
+                             [maxes[0], maxes[1]]]
 
-        # further refine by tightly fitting the alpha channel
-        a_x_box, a_y_box, a_w_box, a_h_box = alpha_bbox(dst)
-        H, status = cv2.findHomography(np.transpose(img_corners),
-                                       np.transpose(rot_projected) - np.float32([x_box + a_x_box, y_box + a_y_box]))
-        dst = cv2.warpPerspective(img, H, (a_w_box, a_h_box))
+        wanted_H = int(maxes[1] - mins[1])
+        wanted_W = int(maxes[0] - mins[0])
 
+        wanted_corners = [[0, 0],
+                          [0, wanted_H],
+                          [wanted_W, 0],
+                          [wanted_W, wanted_H]]
+
+        fit_H, status = cv2.findHomography(np.array(projected_corners),
+                                           np.array(wanted_corners))
+        combined_H = np.matmul(fit_H, H)
+        dst = cv2.warpPerspective(img, combined_H, (wanted_W, wanted_H))
     else:
         dst = cv2.warpPerspective(img, H, (img.shape[1], img.shape[0]))
     return dst
@@ -200,6 +212,7 @@ if __name__ == '__main__':
         rot = rotate(img,
                     angle=i, angle_in=-ax_angle, angle_post=ax_angle,
                     fit_in=True)
+        # fitted = rot
         fitted = fit_in_size(rot, np.array([224, 224]), random_pad=False)
         cv2.imshow("fitted", au.transparent_blend(fitted))
         c = cv2.waitKey(20)
