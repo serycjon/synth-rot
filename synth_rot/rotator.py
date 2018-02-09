@@ -108,6 +108,8 @@ def fit_in_size(img, sz, random_pad=True, center=False, margin=0):
 
     new_sz = (int(new_sz[0]), int(new_sz[1]))
     resized = cv2.resize(img, (new_sz[1], new_sz[0]), interpolation=cv2.INTER_AREA)
+    if channels == 1:
+        resized = resized[..., np.newaxis]
 
     ## pad
     padding = sz - new_sz
