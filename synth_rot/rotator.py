@@ -154,7 +154,25 @@ def fit_in_size(img, sz, random_pad=True, center=False, margin=0):
 
     return final
 
-def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=True):
+def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=True, return_H=False):
+    """Synthesize 3D rotation of an object
+    
+    The img input image is BGRA, where the alpha channel means an
+    object segmentation mask. The object is 3D rotated by three
+    consecutive rotations. With coordinate system of x, y along
+    columns and rows respectively and z going into the image, the
+    three rotations are:
+    1) rotation around z axis (angle_in)
+    2) rotation around x axis (angle)
+    3) rotation around z axis (angle_post)
+    
+    - Z -- the focal length of the camera (default to max(img.shape))
+    - center -- the center of rotation (default to the - image center)
+    - fit_in -- when True, the homography is augmented - in such a way
+      that the whole object fits in the result.
+    - return_H -- when True, return a tuple (rotated_img, H)
+    """
+
     h, w = img.shape[:2]
     if Z is None:
         Z = max(img.shape)
@@ -199,10 +217,14 @@ def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=Tru
         fit_H, status = cv2.findHomography(np.array(projected_corners),
                                            np.array(wanted_corners))
         combined_H = np.matmul(fit_H, H)
-        dst = cv2.warpPerspective(img, combined_H, (wanted_W, wanted_H))
+        H = combined_H
+        dst = cv2.warpPerspective(img, H, (wanted_W, wanted_H))
     else:
         dst = cv2.warpPerspective(img, H, (img.shape[1], img.shape[0]))
-    return dst
+    if return_H: 
+        return dst, H
+    else:
+        return dst
 
 img = cv2.imread("images/tux.png", cv2.IMREAD_UNCHANGED)
 
