@@ -78,7 +78,7 @@ def try_get(xs, index, default):
     except IndexError:
         return default
 
-def fit_in_size(img, sz, random_pad=True, center=False, margin=0):
+def fit_in_size(img, sz, random_pad=True, center=False, margin=0, return_scale=False):
     '''
     1. resize so that the img tightly fits into sz, while keeping aspect ratio
     2. pad to the exact sz:
@@ -101,8 +101,10 @@ def fit_in_size(img, sz, random_pad=True, center=False, margin=0):
     w_scaled = np.round(img_sz * ratios[1])
     if np.all(h_scaled <= sz):
         new_sz = h_scaled
+        used_ratio = ratios[0]
     elif np.all(w_scaled <= sz):
         new_sz = w_scaled
+        used_ratio = ratios[1]
     else:
         raise RuntimeError("cannot fit the image inside sz")
 
@@ -154,7 +156,10 @@ def fit_in_size(img, sz, random_pad=True, center=False, margin=0):
         final = np.zeros((final_sz[0], final_sz[1], channels), dtype=dtype)
         final[margin:margin+sz[0], margin:margin+sz[1], :] = padded
 
-    return final
+    if return_scale:
+        return final, used_ratio
+    else:
+        return final
 
 def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=True, return_H=False):
     """Synthesize 3D rotation of an object
