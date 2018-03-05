@@ -5,6 +5,7 @@ import cv2
 
 import alpha_utils as au
 import rotator
+from utils import compatible_contours
 
 def degrees_interp(x, alpha, beta):
     """ convex combination of two angles 
@@ -22,24 +23,44 @@ def degrees_interp(x, alpha, beta):
 
     return np.interp(x, [0, 1], [alpha, beta])
 
-def main():
-    obj_img = cv2.imread('/home/jonas/dev/thesis/synth_rot/images/tux.png', cv2.IMREAD_UNCHANGED)
+def motion_blur(img, pre_angles, angles, post_angles, xs, ys, n_steps=100, vis_animation=False):
+    """Motion blur an object
+
+    The object is blurred by a 3D rotation and an in-image translation
+    using rotator.rotate.
+    
+    input parameters:
+    img -- [H x W x 4] BGRA uint8 image
+    pre_angles -- (begin, end) angles in degrees, corresponding to rotate() angle_in parameter
+    angles -- (begin, end) angles in degrees, corresponding to rotate() angle parameter
+    post_angles -- (begin, end) angles in degrees, corresponding to rotate() angle_post parameter
+    xs -- (begin, end) pixel coordinates for translation blur
+    ys -- (begin, end) pixel coordinates for translation blur
+    n_steps -- number of interpolation steps
+    vis_animation -- True if the underlying object animation should be shown (default: False)
+    
+    outputs:
+    canvas -- [H' x W' x 4] BGRA uint8 image with the blurred object
+    GT_canvas -- [H' x W'] uint8 image with the GT object mask in the middle of the motion
+    """
 
     ## find object center
-    mask = obj_img[..., 3]
+    mask = img[..., 3]
     moments = cv2.moments(mask)
     center = (int(moments['m10'] / moments['m00']),
               int(moments['m01'] / moments['m00']))
-    start_angles = (0, 0, 0)
-    end_angles = (75, 0, 0)
 
-    start_xy = (0, 0)
-    end_xy   = (135, 250)
+    ## interpolate the pose
+    start_angles = (pre_angles[0], angles[0], post_angles[0])
+    end_angles   = (pre_angles[1], angles[1], post_angles[1])
 
-    xs = np.linspace(0, 1, 300)
-    angles = [degrees_interp(xs, start_angles[i], end_angles[i]) for i in range(len(start_angles))]
-    xys = (np.interp(xs, [0, 1], [start_xy[0], end_xy[0]]),
-           np.interp(xs, [0, 1], [start_xy[1], end_xy[1]]))
+    start_xy = (xs[0], ys[0])
+    end_xy   = (xs[1], ys[1])
+
+    interp_xs = np.linspace(0, 1, n_steps)
+    angles = [degrees_interp(interp_xs, start_angles[i], end_angles[i]) for i in range(len(start_angles))]
+    xys = (np.interp(interp_xs, [0, 1], [start_xy[0], end_xy[0]]),
+           np.interp(interp_xs, [0, 1], [start_xy[1], end_xy[1]]))
 
     xys = zip(*xys)
     angles = zip(*angles)
@@ -47,17 +68,18 @@ def main():
     for i in range(len(angles)):
         angles[i] = (angles[i], xys[i])
 
+    ## rotate the object in all of the steps
     steps = []
     for i, ((angle, pre_angle, post_angle), (x, y)) in enumerate(angles):
-        rot, H = rotator.rotate(obj_img,
+        rot, H = rotator.rotate(img,
                                 angle=angle, angle_in=pre_angle, angle_post=post_angle,
                                 fit_in=True, return_H=True)
         if i == 0:
             fitted, scale = rotator.fit_in_size(rot, np.array([224, 224]), random_pad=False, return_scale=True)
         else:
             fitted = cv2.resize(rot, (0, 0), fx=scale, fy=scale)
-            
-        # fitted = rot
+
+        ## compute the object's center in the rotated image
         old_center = np.array([[center[0]],
                                [center[1]],
                                [1]])
@@ -66,20 +88,19 @@ def main():
         new_center = np.array((new_center[0] / new_center[2],
                                new_center[1] / new_center[2])) * scale
         new_center = np.squeeze(new_center)
+
+        # the translation is done by virtually translating the
+        # object's center to the opposite side
         xy_shift = np.array((x, y)).transpose()
         new_center -= np.array((x, y)) * scale
 
         new_center = new_center.astype(np.int)
 
         steps.append({'img': fitted, 'center': new_center})
-        # cv2.circle(fitted, tuple(new_center.astype(np.int)), 3, (0, 0, 255))
 
-        # cv2.imshow("fitted", au.transparent_blend(fitted))
-        # c = cv2.waitKey(5)
-        # if c == ord('q'):
-        #   break
-
-    ## collect the dimensions
+    ## now we have the object rotated, but the coordinate system is
+    ## different in each image.  This will be unified now.
+    # First, collect the extents of the final blurred image
     central_origin = (0, 0)
     extremes = {'left': 0, 'right': 0, 'top': 0, 'bottom': 0}
     for step in steps:
@@ -99,6 +120,7 @@ def main():
         if bottom > extremes['bottom']:
             extremes['bottom'] = bottom
 
+    # The global coordinates and the canvases are created
     shift = (-extremes['left'], -extremes['top'])
     new_h, new_w = (extremes['bottom'] - extremes['top'],
                     extremes['right'] - extremes['left'])
@@ -108,11 +130,16 @@ def main():
     GT_canvas = np.zeros((new_h, new_w), dtype=np.float32)
 
     GT_frame = len(steps) / 2
+
+    ## Finally, the blurring is done by taking average of the images
     for i, step in enumerate(steps):
         img, img_center = step['img'], step['center']
         h, w = img.shape[:2]
+
+        # combine the global frame shift with the particular step shift
         current_shift = np.array(shift) - img_center
         current_shift = np.ceil(current_shift).astype(np.int)
+
         canvas[current_shift[1]:current_shift[1]+h,
                current_shift[0]:current_shift[0]+w,
                :] += img
@@ -121,7 +148,7 @@ def main():
             GT_canvas[current_shift[1]:current_shift[1]+h,
                       current_shift[0]:current_shift[0]+w] = np.squeeze(img[..., 3])
 
-        if True:
+        if vis_animation:
             local_canvas = np.zeros((new_h, new_w, 4), dtype=np.uint8)
             local_canvas[current_shift[1]:current_shift[1]+h,
                          current_shift[0]:current_shift[0]+w,
@@ -132,11 +159,37 @@ def main():
             if c == ord('q'):
               break
             
-
     canvas /= len(steps)
 
-    cv2.imshow("GT", GT_canvas.astype(np.uint8))
-    cv2.imshow("canvas", canvas.astype(np.uint8))
+    return canvas.astype(np.uint8), GT_canvas.astype(np.uint8)
+    
+
+def main():
+    obj_img = cv2.imread('/home/jonas/dev/thesis/synth_rot/images/tux.png', cv2.IMREAD_UNCHANGED)
+
+    start_angles = (0, 0, 0)
+    end_angles = (75, 0, 0)
+
+    start_xy = (0, 0)
+    end_xy   = (135, 250)
+
+    blurred, blurred_mask = motion_blur(obj_img,
+                                        pre_angles=(start_angles[0], end_angles[0]),
+                                        angles=(start_angles[1], end_angles[1]),
+                                        post_angles=(start_angles[2], end_angles[2]),
+                                        xs=(start_xy[0], end_xy[0]),
+                                        ys=(start_xy[1], end_xy[1]),
+                                        n_steps=60,
+                                        vis_animation=False)
+
+    ret, thresh = cv2.threshold(blurred_mask,127,255,0)
+    contours = compatible_contours(thresh)
+    cnt = contours[0]
+    cv2.drawContours(blurred, [cnt], 0, (0,0,255,255), 1)
+
+    cv2.imshow("mask", blurred_mask)
+    cv2.imshow("blurred blend", au.transparent_blend(blurred))
+    cv2.imshow("blurred", blurred)
     c = cv2.waitKey(0)
     
 if __name__ == '__main__':
