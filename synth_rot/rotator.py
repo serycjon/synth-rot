@@ -221,8 +221,8 @@ def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=Tru
                           [wanted_W, 0],
                           [wanted_W, wanted_H]]
 
-        fit_H, status = cv2.findHomography(np.array(projected_corners),
-                                           np.array(wanted_corners))
+        fit_H, status = cv2.findHomography(np.array(projected_corners, dtype=np.float64),
+                                           np.array(wanted_corners, dtype=np.float64))
         combined_H = np.matmul(fit_H, H)
         H = combined_H
         dst = cv2.warpPerspective(img, H, (wanted_W, wanted_H))
