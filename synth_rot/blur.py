@@ -74,10 +74,6 @@ def motion_blur(img, pre_angles, angles, post_angles, xs, ys, n_steps=100, vis_a
         rot, H = rotator.rotate(img,
                                 angle=angle, angle_in=pre_angle, angle_post=post_angle,
                                 fit_in=True, return_H=True)
-        if i == 0:
-            fitted, scale = rotator.fit_in_size(rot, np.array([224, 224]), random_pad=False, return_scale=True)
-        else:
-            fitted = cv2.resize(rot, (0, 0), fx=scale, fy=scale)
 
         ## compute the object's center in the rotated image
         old_center = np.array([[center[0]],
@@ -86,17 +82,16 @@ def motion_blur(img, pre_angles, angles, post_angles, xs, ys, n_steps=100, vis_a
 
         new_center = np.matmul(H, old_center)
         new_center = np.array((new_center[0] / new_center[2],
-                               new_center[1] / new_center[2])) * scale
+                               new_center[1] / new_center[2]))
         new_center = np.squeeze(new_center)
 
         # the translation is done by virtually translating the
         # object's center to the opposite side
-        xy_shift = np.array((x, y)).transpose()
-        new_center -= np.array((x, y)) * scale
+        new_center -= np.array((x, y))
 
         new_center = new_center.astype(np.int)
 
-        steps.append({'img': fitted, 'center': new_center})
+        steps.append({'img': rot, 'center': new_center, 'H': H})
 
     ## now we have the object rotated, but the coordinate system is
     ## different in each image.  This will be unified now.
