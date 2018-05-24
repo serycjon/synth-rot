@@ -23,27 +23,39 @@ def degrees_interp(x, alpha, beta):
 
     return np.interp(x, [0, 1], [alpha, beta])
 
+def transform_H(H, coords):
+    homo = np.array([[coords[0]],
+                     [coords[1]],
+                     [1]])
+
+    proj = np.matmul(H, homo)
+    proj = np.array((proj[0] / proj[2],
+                     proj[1] / proj[2]))
+    proj = np.squeeze(proj)
+
+    return proj
+
 def motion_blur(img, pre_angles, angles, post_angles, xs, ys, n_steps=100, vis_animation=False):
     """Motion blur an object
 
     The object is blurred by a 3D rotation and an in-image translation
     using rotator.rotate.
     
-    input parameters:
-    img -- [H x W x 4] BGRA uint8 image
-    pre_angles -- (begin, end) angles in degrees, corresponding to rotate() angle_in parameter
-    angles -- (begin, end) angles in degrees, corresponding to rotate() angle parameter
-    post_angles -- (begin, end) angles in degrees, corresponding to rotate() angle_post parameter
-    xs -- (begin, end) pixel coordinates for translation blur
-    ys -- (begin, end) pixel coordinates for translation blur
-    n_steps -- number of interpolation steps
-    vis_animation -- True if the underlying object animation should be shown (default: False)
+    Args:
+    img: [H x W x 4] BGRA uint8 image
+    pre_angles: (begin, end) angles in degrees, corresponding to rotate() angle_in parameter
+    angles: (begin, end) angles in degrees, corresponding to rotate() angle parameter
+    post_angles: (begin, end) angles in degrees, corresponding to rotate() angle_post parameter
+    xs: (begin, end) pixel coordinates for translation blur
+    ys: (begin, end) pixel coordinates for translation blur
+    n_steps: number of interpolation steps
+    vis_animation: True if the underlying object animation should be shown (default: False)
     
-    outputs:
-    canvas -- [H' x W' x 4] BGRA uint8 image with the blurred object
-    GT_canvas -- [H' x W'] uint8 image with the GT object mask in the middle of the motion
+    Outputs:
+    canvas: [H' x W' x 4] BGRA uint8 image with the blurred object
+    GT_canvas: [H' x W'] uint8 image with the GT object mask in the middle of the motion
+    homographies: list of homographies from object image frame to the canvas frame (n_steps long)
     """
-
     ## find object center
     mask = img[..., 3]
     moments = cv2.moments(mask)
@@ -76,22 +88,17 @@ def motion_blur(img, pre_angles, angles, post_angles, xs, ys, n_steps=100, vis_a
                                 fit_in=True, return_H=True)
 
         ## compute the object's center in the rotated image
-        old_center = np.array([[center[0]],
-                               [center[1]],
-                               [1]])
-
-        new_center = np.matmul(H, old_center)
-        new_center = np.array((new_center[0] / new_center[2],
-                               new_center[1] / new_center[2]))
-        new_center = np.squeeze(new_center)
+        new_center = transform_H(H, center)
 
         # the translation is done by virtually translating the
         # object's center to the opposite side
-        new_center -= np.array((x, y))
+        center_shift = -np.array((x, y))
+        new_center += center_shift
 
         new_center = new_center.astype(np.int)
 
-        steps.append({'img': rot, 'center': new_center, 'H': H})
+        steps.append({'img': rot, 'center': new_center,
+                      'shift': center_shift, 'H': H})
 
     ## now we have the object rotated, but the coordinate system is
     ## different in each image.  This will be unified now.
@@ -99,12 +106,12 @@ def motion_blur(img, pre_angles, angles, post_angles, xs, ys, n_steps=100, vis_a
     central_origin = (0, 0)
     extremes = {'left': 0, 'right': 0, 'top': 0, 'bottom': 0}
     for step in steps:
-        img, img_center = step['img'], step['center']
+        img, shift = step['img'], step['shift']
 
-        left = 0 - img_center[0]
-        right = img.shape[1] - img_center[0]
-        top = 0 - img_center[1]
-        bottom = img.shape[0] - img_center[1]
+        left = 0 + shift[0]
+        right = img.shape[1] + shift[0]
+        top = 0 + shift[1]
+        bottom = img.shape[0] + shift[1]
 
         if left < extremes['left']:
             extremes['left'] = left
@@ -116,7 +123,7 @@ def motion_blur(img, pre_angles, angles, post_angles, xs, ys, n_steps=100, vis_a
             extremes['bottom'] = bottom
 
     # The global coordinates and the canvases are created
-    shift = (-extremes['left'], -extremes['top'])
+    top_left = (extremes['left'], extremes['top'])
     new_h, new_w = (extremes['bottom'] - extremes['top'],
                     extremes['right'] - extremes['left'])
     new_h, new_w = int(np.ceil(new_h)), int(np.ceil(new_w))
@@ -126,37 +133,57 @@ def motion_blur(img, pre_angles, angles, post_angles, xs, ys, n_steps=100, vis_a
 
     GT_frame = len(steps) / 2
 
+    blur_homographies = []
     ## Finally, the blurring is done by taking average of the images
     for i, step in enumerate(steps):
-        img, img_center = step['img'], step['center']
+        img = step['img']
         h, w = img.shape[:2]
 
-        # combine the global frame shift with the particular step shift
-        current_shift = np.array(shift) - img_center
-        current_shift = np.ceil(current_shift).astype(np.int)
+        total_shift = step['shift'] - np.array(top_left)
 
-        canvas[current_shift[1]:current_shift[1]+h,
-               current_shift[0]:current_shift[0]+w,
+        H = step['H'].copy()
+
+        shift_H = np.eye(3)
+        shift_H[:2, 2] = total_shift
+        H = np.matmul(shift_H, H)
+
+        blur_homographies.append(H)
+
+        current_corner = np.ceil(total_shift).astype(np.int)
+
+        canvas[current_corner[1]:current_corner[1]+h,
+               current_corner[0]:current_corner[0]+w,
                :] += img
 
         if i == GT_frame:
-            GT_canvas[current_shift[1]:current_shift[1]+h,
-                      current_shift[0]:current_shift[0]+w] = np.squeeze(img[..., 3])
+            GT_canvas[current_corner[1]:current_corner[1]+h,
+                      current_corner[0]:current_corner[0]+w] = np.squeeze(img[..., 3])
 
         if vis_animation:
+            H_center = transform_H(H, center).astype(np.int)
             local_canvas = np.zeros((new_h, new_w, 4), dtype=np.uint8)
-            local_canvas[current_shift[1]:current_shift[1]+h,
-                         current_shift[0]:current_shift[0]+w,
+            local_canvas[current_corner[1]:current_corner[1]+h,
+                         current_corner[0]:current_corner[0]+w,
                          :] = img
+            local_canvas[H_center[1],
+                         H_center[0], :] = np.array([0, 0, 255, 255]).T
 
-            cv2.imshow("animation", local_canvas)
-            c = cv2.waitKey(5)
+            cv2.imshow("cv: animation", local_canvas)
+            c = cv2.waitKey(0)
             if c == ord('q'):
-              break
-            
-    canvas /= len(steps)
+                import sys
+                sys.exit(1)
 
-    return canvas.astype(np.uint8), GT_canvas.astype(np.uint8)
+    canvas /= len(steps)
+    ## visualize motion centers
+    # for H in blur_homographies:
+    #     H_center = transform_H(H, center)
+    #     H_center = np.ceil(H_center).astype(np.int)
+    #     canvas[H_center[1],
+    #            H_center[0],
+    #            :] = (0, 0, 255, 255)
+
+    return canvas.astype(np.uint8), GT_canvas.astype(np.uint8), blur_homographies
     
 
 def main():
@@ -168,14 +195,14 @@ def main():
     start_xy = (0, 0)
     end_xy   = (135, 250)
 
-    blurred, blurred_mask = motion_blur(obj_img,
-                                        pre_angles=(start_angles[0], end_angles[0]),
-                                        angles=(start_angles[1], end_angles[1]),
-                                        post_angles=(start_angles[2], end_angles[2]),
-                                        xs=(start_xy[0], end_xy[0]),
-                                        ys=(start_xy[1], end_xy[1]),
-                                        n_steps=60,
-                                        vis_animation=False)
+    blurred, blurred_mask, Hs = motion_blur(obj_img,
+                                            pre_angles=(start_angles[0], end_angles[0]),
+                                            angles=(start_angles[1], end_angles[1]),
+                                            post_angles=(start_angles[2], end_angles[2]),
+                                            xs=(start_xy[0], end_xy[0]),
+                                            ys=(start_xy[1], end_xy[1]),
+                                            n_steps=60,
+                                            vis_animation=False)
 
     ret, thresh = cv2.threshold(blurred_mask,127,255,0)
     contours = compatible_contours(thresh)
