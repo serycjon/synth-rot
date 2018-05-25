@@ -54,6 +54,7 @@ def motion_blur(img, pre_angles, angles, post_angles, xs, ys, n_steps=100, vis_a
     Outputs:
     canvas: [H' x W' x 4] BGRA uint8 image with the blurred object
     GT_canvas: [H' x W'] uint8 image with the GT object mask in the middle of the motion
+    GT_H: the object homography corresponding to the GT_canvas
     homographies: list of homographies from object image frame to the canvas frame (n_steps long)
     """
     ## find object center
@@ -158,6 +159,7 @@ def motion_blur(img, pre_angles, angles, post_angles, xs, ys, n_steps=100, vis_a
         if i == GT_frame:
             GT_canvas[current_corner[1]:current_corner[1]+h,
                       current_corner[0]:current_corner[0]+w] = np.squeeze(img[..., 3])
+            GT_H = H
 
         if vis_animation:
             H_center = transform_H(H, center).astype(np.int)
@@ -183,7 +185,7 @@ def motion_blur(img, pre_angles, angles, post_angles, xs, ys, n_steps=100, vis_a
     #            H_center[0],
     #            :] = (0, 0, 255, 255)
 
-    return canvas.astype(np.uint8), GT_canvas.astype(np.uint8), blur_homographies
+    return canvas.astype(np.uint8), GT_canvas.astype(np.uint8), GT_H, blur_homographies
     
 
 def main():
