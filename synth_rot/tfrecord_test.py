@@ -18,7 +18,7 @@ if __name__ == '__main__':
             compression_type=tf.python_io.TFRecordCompressionType.ZLIB)
     else:
         options = None
-        
+
     record_iterator = tf.python_io.tf_record_iterator(path=tfrecords_filename, options=options)
 
     angles = []

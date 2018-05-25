@@ -30,15 +30,15 @@ def read_and_decode(filename_queue, batch_size=2, capacity=30, num_threads=2, co
     # [mnist.IMAGE_PIXELS].
     base = tf.decode_raw(features['base_raw'], tf.uint8)
     rot = tf.decode_raw(features['rot_raw'], tf.uint8)
-    
+
     height = tf.cast(features['height'], tf.int32)
     width = tf.cast(features['width'], tf.int32)
 
     angle = features['rot_angle']
-    
+
     base_shape = tf.stack([height, width, 3])
     rot_shape = tf.stack([height, width, 3])
-    
+
     base = tf.reshape(base, base_shape)
     rot = tf.reshape(rot, rot_shape)
 
@@ -48,13 +48,13 @@ def read_and_decode(filename_queue, batch_size=2, capacity=30, num_threads=2, co
     rot = tf.image.resize_image_with_crop_or_pad(image=rot,
                                                  target_height=IMAGE_HEIGHT,
                                                  target_width=IMAGE_WIDTH)
-    
+
     bases, rots, angles = tf.train.shuffle_batch([base, rot, angle],
                                                  batch_size=batch_size,
                                                  capacity=capacity,
                                                  num_threads=num_threads,
                                                  min_after_dequeue=10)
-    
+
     return bases, rots, angles
 
 if __name__ == '__main__':

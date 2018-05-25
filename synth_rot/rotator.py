@@ -67,7 +67,7 @@ def alpha_contour(img):
     else:
         cnt = contours[0]
     return cnt
-    
+
 def alpha_bbox(img):
     cnt = alpha_contour(img)
     return cv2.boundingRect(cnt)
@@ -128,8 +128,8 @@ def fit_in_size(img, sz, random_pad=True, center=False, margin=0, return_scale=F
                 pre = 0
                 post = p
 
-        pad_pre = np.zeros((pre, sz[1], channels), dtype=dtype)           
-        pad_post = np.zeros((post, sz[1], channels), dtype=dtype)           
+        pad_pre = np.zeros((pre, sz[1], channels), dtype=dtype)
+        pad_post = np.zeros((post, sz[1], channels), dtype=dtype)
         padded = np.vstack((pad_pre, resized, pad_post))
     elif padding[1] > 0:
         p = padding[1]
@@ -163,7 +163,7 @@ def fit_in_size(img, sz, random_pad=True, center=False, margin=0, return_scale=F
 
 def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=True, return_H=False):
     """Synthesize 3D rotation of an object
-    
+
     The img input image is BGRA, where the alpha channel means an
     object segmentation mask. The object is 3D rotated by three
     consecutive rotations. With coordinate system of x, y along
@@ -172,7 +172,7 @@ def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=Tru
     1) rotation around z axis (angle_in)
     2) rotation around x axis (angle)
     3) rotation around z axis (angle_post)
-    
+
     - Z -- the focal length of the camera (default to max(img.shape))
     - center -- the center of rotation (default to the - image center)
     - fit_in -- when True, the homography is augmented - in such a way
@@ -228,7 +228,7 @@ def rotate(img, angle, angle_in=0, angle_post=0, Z=None, center=None, fit_in=Tru
         dst = cv2.warpPerspective(img, H, (wanted_W, wanted_H))
     else:
         dst = cv2.warpPerspective(img, H, (img.shape[1], img.shape[0]))
-    if return_H: 
+    if return_H:
         return dst, H
     else:
         return dst

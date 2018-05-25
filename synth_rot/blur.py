@@ -8,7 +8,7 @@ import rotator
 from utils import compatible_contours
 
 def degrees_interp(x, alpha, beta):
-    """ convex combination of two angles 
+    """ convex combination of two angles
     x is list of combination coefficients from [0, 1]; alpha and beta angles in degrees. Picks the shorter arc. """
     # get both angles to positive values
     alpha = (alpha + 360) % 360
@@ -40,7 +40,7 @@ def motion_blur(img, pre_angles, angles, post_angles, xs, ys, n_steps=100, vis_a
 
     The object is blurred by a 3D rotation and an in-image translation
     using rotator.rotate.
-    
+
     Args:
     img: [H x W x 4] BGRA uint8 image
     pre_angles: (begin, end) angles in degrees, corresponding to rotate() angle_in parameter
@@ -50,7 +50,7 @@ def motion_blur(img, pre_angles, angles, post_angles, xs, ys, n_steps=100, vis_a
     ys: (begin, end) pixel coordinates for translation blur
     n_steps: number of interpolation steps
     vis_animation: True if the underlying object animation should be shown (default: False)
-    
+
     Outputs:
     canvas: [H' x W' x 4] BGRA uint8 image with the blurred object
     GT_canvas: [H' x W'] uint8 image with the GT object mask in the middle of the motion
@@ -186,7 +186,7 @@ def motion_blur(img, pre_angles, angles, post_angles, xs, ys, n_steps=100, vis_a
     #            :] = (0, 0, 255, 255)
 
     return canvas.astype(np.uint8), GT_canvas.astype(np.uint8), GT_H, blur_homographies
-    
+
 
 def main():
     obj_img = cv2.imread('/home/jonas/dev/thesis/synth_rot/images/tux.png', cv2.IMREAD_UNCHANGED)
@@ -215,6 +215,6 @@ def main():
     cv2.imshow("blurred blend", au.transparent_blend(blurred))
     cv2.imshow("blurred", blurred)
     c = cv2.waitKey(0)
-    
+
 if __name__ == '__main__':
     main()

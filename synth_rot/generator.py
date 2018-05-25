@@ -116,7 +116,7 @@ def generate(images, output, N, max_entries=None,
                                    dropout_chance=dropout_chance)
         writer.write(example.SerializeToString())
     writer.close()
-    
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
