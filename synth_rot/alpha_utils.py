@@ -12,9 +12,17 @@ def checkerboard(h, w, sq=15):
     img = vals[idx]
     return img
 
-def transparent_blend(img):
-    """ blends img with checkerboard pattern to visualize transparency in opencv """
-    board = checkerboard(img.shape[0], img.shape[1]).astype(np.float32)
+def transparent_blend(img, background=None):
+    """ blends img with checkerboard pattern to visualize transparency in opencv
+
+    Args:
+      img: HxWx4 np.array
+      background: (optional) HxWx4 np.array to use instead of the checkerboard
+    """
+    if background is not None:
+        board = background.astype(np.float32)
+    else:
+        board = checkerboard(img.shape[0], img.shape[1]).astype(np.float32)
 
     img_bgr = img[..., :3].astype(np.float32)
     img_alpha = img[..., 3]
