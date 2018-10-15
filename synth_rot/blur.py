@@ -197,14 +197,14 @@ def main():
     start_xy = (0, 0)
     end_xy   = (135, 250)
 
-    blurred, blurred_mask, Hs = motion_blur(obj_img,
-                                            pre_angles=(start_angles[0], end_angles[0]),
-                                            angles=(start_angles[1], end_angles[1]),
-                                            post_angles=(start_angles[2], end_angles[2]),
-                                            xs=(start_xy[0], end_xy[0]),
-                                            ys=(start_xy[1], end_xy[1]),
-                                            n_steps=60,
-                                            vis_animation=False)
+    blurred, blurred_mask, GT_H, Hs = motion_blur(obj_img,
+                                                  pre_angles=(start_angles[0], end_angles[0]),
+                                                  angles=(start_angles[1], end_angles[1]),
+                                                  post_angles=(start_angles[2], end_angles[2]),
+                                                  xs=(start_xy[0], end_xy[0]),
+                                                  ys=(start_xy[1], end_xy[1]),
+                                                  n_steps=60,
+                                                  vis_animation=False)
 
     ret, thresh = cv2.threshold(blurred_mask,127,255,0)
     contours = compatible_contours(thresh)
