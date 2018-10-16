@@ -25,14 +25,9 @@ def transparent_blend(img, background=None):
         board = checkerboard(img.shape[0], img.shape[1]).astype(np.float32)
 
     img_bgr = img[..., :3].astype(np.float32)
-    img_alpha = img[..., 3]
+    img_alpha = img[..., 3].astype(np.float32)
 
-    # repeat the alpha channel * 3
-    alpha_factor = img_alpha[:, :, np.newaxis].astype(np.float32) / 255.0
-    alpha_factor = np.concatenate((alpha_factor, alpha_factor, alpha_factor), axis=2)
+    alpha_factor = np.expand_dims(img_alpha, axis=2) / 255.0
 
-    img_bgr = cv2.multiply(alpha_factor, img_bgr)
-    board   = cv2.multiply(1-alpha_factor, board)
-
-    dst = cv2.add(img_bgr, board).astype(np.uint8)
-    return dst
+    dst = alpha_factor * img_bgr + (1 - alpha_factor) * board
+    return dst.astype(np.uint8)
