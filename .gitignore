@@ -2,3 +2,4 @@
 images
 *.tfrecords*
 val_images
+*.egg-info
