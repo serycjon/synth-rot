@@ -3,8 +3,9 @@ from __future__ import print_function
 
 import numpy as np
 import cv2
-import alpha_utils as au
-from utils import compatible_contours, compatible_boundingrect
+
+from . import alpha_utils as au
+from .utils import compatible_contours, compatible_boundingrect
 
 def get_corners(img):
     h, w = img.shape[:2]

@@ -3,12 +3,14 @@ extract RGBA object image from RGB, segmentation pair
 '''
 from __future__ import print_function
 
-import cv2
-import numpy as np
-import alpha_utils as au
 import os
 import argparse
-from utils import compatible_contours
+
+import numpy as np
+import cv2
+
+from .utils import compatible_contours
+from . import alpha_utils as au
 
 def crop_to_alpha(img):
     ''' crop BGRA image to the minimal straight rectangle '''

@@ -5,7 +5,7 @@ import cv2
 
 import alpha_utils as au
 import rotator
-from utils import compatible_contours
+from .utils import compatible_contours
 
 def degrees_interp(x, alpha, beta):
     """ convex combination of two angles

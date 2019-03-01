@@ -2,14 +2,16 @@
 ''' based on tfrecords-guide at http://warmspringwinds.github.io/tensorflow/tf-slim/2016/12/21/tfrecords-guide/ '''
 from __future__ import print_function
 
-import numpy as np
-import cv2
 import argparse
-import rotator
-import tensorflow as tf
 import os
 import sys
 import random
+
+import numpy as np
+import cv2
+import tensorflow as tf
+
+from . import rotator
 
 def _bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))

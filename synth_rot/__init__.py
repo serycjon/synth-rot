@@ -1,3 +1,3 @@
-from tf_loader import *
-import extractor
-import generator
+from .tf_loader import *
+from . import extractor
+from . import generator
